@@ -14,6 +14,7 @@
 #include <chrono>
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <std_msgs/Int16.h>
 
 #define _DEBUG
 #define _TRACE
@@ -500,6 +501,19 @@ private:
 			roundFloat(quatfinger.phalanges(1).stretch(), 2), // pip joint finger bending normalized value
 			jointNames[2], // ip for thumb, dip for other fingers
 			roundFloat(quatfinger.phalanges(2).stretch(), 2)); // dip joint finger bending normalized value, no sensor at dip, same as pip...
+
+		ros::NodeHandle nh;
+		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
+		std_msgs::Float32MultiArray array;
+		array.data.resize(5);
+		array.data[0] = i; // finger number
+		array.data[1] = roundFloat(quatfinger.phalanges(0).spread(), 2);
+		array.data[2] = roundFloat(quatfinger.phalanges(0).stretch(), 2);
+		array.data[3] = roundFloat(quatfinger.phalanges(1).stretch(), 2);
+		array.data[4] = roundFloat(quatfinger.phalanges(2).stretch(), 2);
+		pub.publish(array);
+		// This part publishes each degree of finger joints one after another.
+		// Be careful to use. 
 	}
 
 	void printFingerDegrees(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
@@ -554,6 +568,27 @@ private:
 			roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2), // joint quaternion Y
 			roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2), // joint quaternion Z
 			roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2));// joint quaternion W
+
+		ros::NodeHandle nh;
+		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
+		std_msgs::Float32MultiArray array;
+		array.data.resize(13);
+		array.data[0] = i; // finger number
+		array.data[1] = roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2);
+		array.data[2] = roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2);
+		array.data[3] = roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2);
+		array.data[4] = roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2);
+		array.data[5] = roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2);
+		array.data[6] = roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2);
+		array.data[7] = roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2);
+		array.data[8] = roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2);
+		array.data[9] = roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2);
+		array.data[10] = roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2);
+		array.data[11] = roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2);
+		array.data[12] = roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2);
+		pub.publish(array);
+		// This part publishes each degree of finger joints one after another.
+		// Be careful to use. 
 	}
 
 	HermesSDK::errorMessageCallback onError = [&](const HermesSDK::ErrorMessage& _msg)
