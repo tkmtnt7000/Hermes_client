@@ -13,6 +13,7 @@
 #include <fstream>
 #include <chrono>
 #include <ros/ros.h>
+#include <std_msgs/Float32MultiArray.h>
 
 #define _DEBUG
 #define _TRACE
@@ -515,6 +516,17 @@ private:
 			roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0), // pip joint finger bending degrees value
 			jointNames[2], // ip for thumb, dip for other fingers
 			roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0)); // dip joint finger bending degrees value, same normalized value as pip, but mapped on different range
+
+		ros::NodeHandle nh;
+		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
+		std_msgs::Float32MultiArray array;
+		array.data.resize(5);
+		array.data[0] = i; // finger number
+		array.data[1] = roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0);
+		array.data[2] = roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0);
+		array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
+		array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
+		pub.publish(array);
 	}
 
 	void printFingerQuaternion(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
@@ -837,6 +849,25 @@ public:
 
 int main(int argc, char* argv[])
 {
+	ros::init(argc, argv, "manus_glove");
+	/* ros::init(argc, argv, "talker");
+	ros::NodeHandle n;
+	ros::Publisher pub = n.advertise<std_msgs::Float32MultiArray>("array",10);
+	ros::Rate loop_rate(1);
+	while (ros::ok())
+	{
+		std_msgs::Float32MultiArray array;
+		array.data.resize(4);
+		array.data[0] = 0.0;
+		array.data[1] = 1.0;
+		array.data[2] = 2.0;
+		array.data[3] = 3.0;
+		pub.publish(array);
+		ROS_INFO("I published array!");
+		ros::spinOnce();
+		loop_rate.sleep();
+	} */
+
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 
 	Sample sample;
