@@ -527,6 +527,8 @@ private:
 		array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
 		array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
 		pub.publish(array);
+		// This part publishes each degree of finger joints one after another.
+		// Be careful to use. 
 	}
 
 	void printFingerQuaternion(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
