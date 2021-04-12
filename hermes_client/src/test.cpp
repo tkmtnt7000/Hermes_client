@@ -16,6 +16,7 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/Int16.h>
 #include <geometry_msgs/QuaternionStamped.h>
+#include <sensor_msgs/JointState.h>
 
 #define _DEBUG
 #define _TRACE
@@ -494,7 +495,80 @@ private:
 						publishFingerNormalized(rumbleFingerStr, i, jointNames, quatfinger);
 						break;
 					}}
+					//printFingerDegrees(rumbleFingerStr, i, jointNames, quatfinger);
+					//publishFingerDegrees(rumbleFingerStr, i, jointNames, quatfinger);
+					// printFingerQuaternion(rumbleFingerStr, i, jointNames, quatfinger);
+					// publishFingerQuaternion(rumbleFingerStr, i, jointNames, quatfinger);
+					// printFingerNormalized(rumbleFingerStr, i, jointNames, quatfinger);
+					// publishFingerNormalized(rumbleFingerStr, i, jointNames, quatfinger);
 				}
+
+				sensor_msgs::JointState deg;
+				sensor_msgs::JointState norm;
+				geometry_msgs::Quaternion quat;
+
+				for (int j = 0; j < raw.flex_size(); j++)
+				{
+					auto rawfinger = raw.flex(j);
+					auto quatfinger = glove.fingers(j);
+
+					// use imus for finger spreading, this is the imu rotation RELATIVE TO THE WRIST IMU and NOT relative to the world
+					Hermes::Protocol::Orientation imu;
+					int imu_nr = j + 1; // imu(0) = wrist, imu(1) = thumb, imu(2) = index, imu(3) = middle, imu(4) = ring, imu(5) = pinky
+					if (raw.imus_size() > imu_nr) // primeOne has 2 imu's (wrist and thumb), primeTwo has 6 imu's (wrist + 5 fingers)
+					{
+						imu = raw.imus(imu_nr);
+					}
+
+					std::string rumbleFingerStr = " ";
+					if (m_rumbleState[glove.info().handtype()].finger[j])
+						rumbleFingerStr = "R";
+
+					bool thumb = (j == 0);
+					const std::array<std::string, jointPerFingerCount>& jointNames = thumb ? thumbJointNames : fingerJointNames;
+
+					deg.name.push_back(fingerNames[j]+"-"+jointNames[0]+"-spread");
+					deg.position.push_back(roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0));
+					deg.name.push_back(fingerNames[j]+"-"+jointNames[0]+"-stretch");
+					deg.position.push_back(roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0));
+					deg.name.push_back(fingerNames[j]+"-"+jointNames[1]+"-stretch");
+					deg.position.push_back(roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0));
+					deg.name.push_back(fingerNames[j]+"-"+jointNames[2]+"-stretch");
+					deg.position.push_back(roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0));
+
+					norm.name.push_back(fingerNames[j]+"-"+jointNames[0]+"-spread");
+					norm.position.push_back(roundFloat(quatfinger.phalanges(0).spread(), 2));
+					norm.name.push_back(fingerNames[j]+"-"+jointNames[0]+"-stretch");
+					norm.position.push_back(roundFloat(quatfinger.phalanges(0).stretch(), 2));
+					norm.name.push_back(fingerNames[j]+"-"+jointNames[1]+"-stretch");
+					norm.position.push_back(roundFloat(quatfinger.phalanges(1).stretch(), 2));
+					norm.name.push_back(fingerNames[j]+"-"+jointNames[2]+"-stretch");
+					norm.position.push_back(roundFloat(quatfinger.phalanges(2).stretch(), 2));
+
+					
+				}
+				pub_deg.publish(deg);
+				pub_norm.publish(norm);	
+
+			// fingerNames[i], // name of the finger
+			// jointNames[0], // cmc for thumb, mcp for other fingers
+			// roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2), // joint quaternion X
+			// roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2), // joint quaternion Y
+			// roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2), // joint quaternion Z
+			// roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2), // joint quaternion W
+			// jointNames[1], // mcp for thumb, pip for other fingers
+			// roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2), // joint quaternion X
+			// roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2), // joint quaternion Y
+			// roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2), // joint quaternion Z
+			// roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2), // joint quaternion W
+			// jointNames[2], // ip for thumb, dip for other fingers
+			// // dip joint finger bending normalized value, no sensor at dip, same as pip
+			// // but dip quaternion tuned in handmodel is different from pip to make it look natural;
+			// roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2), // joint quaternion X
+			// roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2), // joint quaternion Y
+			// roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2), // joint quaternion Z
+			// roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2));// joint quaternion W	
+
 			}
 		}
 	}
@@ -510,7 +584,7 @@ private:
 			roundFloat(quatfinger.phalanges(0).stretch(), 2), // mcp joint finger bending normalized value, blended between flex and imu sensors
 			jointNames[1], // mcp for thumb, pip for other fingers
 			roundFloat(quatfinger.phalanges(1).stretch(), 2), // pip joint finger bending normalized value
-			jointNames[2], // ip for thumb, dip for other fingers
+			jointNames[2], // dip for thumb, dip for other fingers
 			roundFloat(quatfinger.phalanges(2).stretch(), 2)); // dip joint finger bending normalized value, no sensor at dip, same as pip... 
 	}
 
@@ -526,7 +600,7 @@ private:
 			roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0), // mcp joint finger bending degrees value, blended between flex and imu sensors
 			jointNames[1], // mcp for thumb, pip for other fingers
 			roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0), // pip joint finger bending degrees value
-			jointNames[2], // ip for thumb, dip for other fingers
+			jointNames[2], // dip for thumb, dip for other fingers
 			roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0)); // dip joint finger bending degrees value, same normalized value as pip, but mapped on different range
 	}
 
@@ -589,56 +663,87 @@ public:
 	Sample(): nh("")
 	{
 		maximizeWindow();
-		pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
-		pub_deg = nh.advertise<std_msgs::Float32MultiArray>("degree", 10);
-		pub_quat = nh.advertise<std_msgs::Float32MultiArray>("quaternion", 10);
+		pub_norm = nh.advertise<sensor_msgs::JointState>("norm", 10);
+		pub_deg = nh.advertise<sensor_msgs::JointState>("degree", 10);
+		pub_quat = nh.advertise<sensor_msgs::JointState>("quaternion", 10);
+		// pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
+		// pub_deg = nh.advertise<std_msgs::Float32MultiArray>("degree", 10);
+		// pub_quat = nh.advertise<std_msgs::Float32MultiArray>("quaternion", 10);
 		// sub = nh.subscribe("/chatter", 1, &RosWithClass::Callback, this)
 	}
 
 	void publishFingerNormalized(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
 	{
-		std_msgs::Float32MultiArray array;	
-		array.data.resize(5);
-		array.data[0] = i; // finger number
-		array.data[1] = roundFloat(quatfinger.phalanges(0).spread(), 2);
-		array.data[2] = roundFloat(quatfinger.phalanges(0).stretch(), 2);
-		array.data[3] = roundFloat(quatfinger.phalanges(1).stretch(), 2);
-		array.data[4] = roundFloat(quatfinger.phalanges(2).stretch(), 2);
-		pub_deg.publish(array);
+		// std_msgs::Float32MultiArray array;	
+		// array.data.resize(5);
+		// array.data[0] = i; // finger number
+		// array.data[1] = roundFloat(quatfinger.phalanges(0).spread(), 2);
+		// array.data[2] = roundFloat(quatfinger.phalanges(0).stretch(), 2);
+		// array.data[3] = roundFloat(quatfinger.phalanges(1).stretch(), 2);
+		// array.data[4] = roundFloat(quatfinger.phalanges(2).stretch(), 2);
+		// pub_deg.publish(array);
+		// sensor_msgs::JointState norm;
+		// norm.name[i] =  
+
 	}
 
+	void publishDegrees(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
+	{
+		// for (int j = 0; j < raw.flex_size(); j++)
+		// 	{
+		// 		auto rawfinger = raw.flex(j);
+		// 		auto quatfinger = glove.fingers(j);
+
+		// 		// use imus for finger spreading, this is the imu rotation RELATIVE TO THE WRIST IMU and NOT relative to the world
+		// 		Hermes::Protocol::Orientation imu;
+		// 		int imu_nr = j + 1; // imu(0) = wrist, imu(1) = thumb, imu(2) = index, imu(3) = middle, imu(4) = ring, imu(5) = pinky
+		// 		if (raw.imus_size() > imu_nr) // primeOne has 2 imu's (wrist and thumb), primeTwo has 6 imu's (wrist + 5 fingers)
+		// 		{
+		// 			imu = raw.imus(imu_nr);
+		// 		}
+
+		// 		std::string rumbleFingerStr = " ";
+		// 		if (m_rumbleState[glove.info().handtype()].finger[j])
+		// 			rumbleFingerStr = "R";
+
+		// 		bool thumb = (j == 0);
+		// 		const std::array<std::string, jointPerFingerCount>& jointNames = thumb ? thumbJointNames : fingerJointNames;
+
+		// 	}
+	}
 	void publishFingerDegrees(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
 	{
-		std_msgs::Float32MultiArray array;
-		array.data.resize(5);
-		array.data[0] = i; // finger number
-		array.data[1] = roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0);
-		array.data[2] = roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0);
-		array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
-		array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
-		pub_deg.publish(array);
+		// std_msgs::Float32MultiArray array;
+		// array.data.resize(5);
+		// array.data[0] = i; // finger number
+		// array.data[1] = roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0);
+		// array.data[2] = roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0);
+		// array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
+		// array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
+		// pub_deg.publish(array);
 		// This part publishes each degree of finger joints.
 		// Be careful to use. 
+		//sensor_msgs::JointState deg;
 	}
 
 	void publishFingerQuaternion(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
 	{
-		std_msgs::Float32MultiArray quat;
-		quat.data.resize(13);
-		quat.data[0] = i; // finger number
-		quat.data[1] = roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2);
-		quat.data[2] = roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2);
-		quat.data[3] = roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2);
-		quat.data[4] = roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2);
-		quat.data[5] = roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2);
-		quat.data[6] = roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2);
-		quat.data[7] = roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2);
-		quat.data[8] = roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2);
-		quat.data[9] = roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2);
-		quat.data[10] = roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2);
-		quat.data[11] = roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2);
-		quat.data[12] = roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2);
-		pub_quat.publish(quat);
+		// std_msgs::Float32MultiArray quat;
+		// quat.data.resize(13);
+		// quat.data[0] = i; // finger number
+		// quat.data[1] = roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2);
+		// quat.data[2] = roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2);
+		// quat.data[3] = roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2);
+		// quat.data[4] = roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2);
+		// quat.data[5] = roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2);
+		// quat.data[6] = roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2);
+		// quat.data[7] = roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2);
+		// quat.data[8] = roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2);
+		// quat.data[9] = roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2);
+		// quat.data[10] = roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2);
+		// quat.data[11] = roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2);
+		// quat.data[12] = roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2);
+		// pub_quat.publish(quat);
 		// This part publishes each degree of finger joints.
 		// Be careful to use. 
 	}
