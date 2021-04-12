@@ -505,7 +505,7 @@ private:
 
 				sensor_msgs::JointState deg;
 				sensor_msgs::JointState norm;
-				geometry_msgs::Quaternion quat;
+				geometry_msgs::QuaternionStamped quat;
 
 				for (int j = 0; j < raw.flex_size(); j++)
 				{
@@ -514,7 +514,7 @@ private:
 
 					// use imus for finger spreading, this is the imu rotation RELATIVE TO THE WRIST IMU and NOT relative to the world
 					Hermes::Protocol::Orientation imu;
-					int imu_nr = j + 1; // imu(0) = wrist, imu(1) = thumb, imu(2) = index, imu(3) = middle, imu(4) = ring, imu(5) = pinky
+					int imu_nr = j ; // imu(0) = wrist, imu(1) = thumb, imu(2) = index, imu(3) = middle, imu(4) = ring, imu(5) = pinky
 					if (raw.imus_size() > imu_nr) // primeOne has 2 imu's (wrist and thumb), primeTwo has 6 imu's (wrist + 5 fingers)
 					{
 						imu = raw.imus(imu_nr);
@@ -545,10 +545,15 @@ private:
 					norm.name.push_back(fingerNames[j]+"-"+jointNames[2]+"-stretch");
 					norm.position.push_back(roundFloat(quatfinger.phalanges(2).stretch(), 2));
 
-					
+					quat.quaternion.x = roundFloat(imu.full().x(), 2);
+					quat.quaternion.y = roundFloat(imu.full().y(), 2);
+					quat.quaternion.z = roundFloat(imu.full().z(), 2);
+					quat.quaternion.w = roundFloat(imu.full().w(), 2);
+
 				}
 				pub_deg.publish(deg);
-				pub_norm.publish(norm);	
+				pub_norm.publish(norm);
+				pub_quat.publish(quat);
 
 			// fingerNames[i], // name of the finger
 			// jointNames[0], // cmc for thumb, mcp for other fingers
@@ -665,7 +670,7 @@ public:
 		maximizeWindow();
 		pub_norm = nh.advertise<sensor_msgs::JointState>("norm", 10);
 		pub_deg = nh.advertise<sensor_msgs::JointState>("degree", 10);
-		pub_quat = nh.advertise<sensor_msgs::JointState>("quaternion", 10);
+		pub_quat = nh.advertise<geometry_msgs::QuaternionStamped>("quaternion", 10);
 		// pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
 		// pub_deg = nh.advertise<std_msgs::Float32MultiArray>("degree", 10);
 		// pub_quat = nh.advertise<std_msgs::Float32MultiArray>("quaternion", 10);
