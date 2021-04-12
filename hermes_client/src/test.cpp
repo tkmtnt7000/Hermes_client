@@ -15,6 +15,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/Int16.h>
+#include <geometry_msgs/QuaternionStamped.h>
 
 #define _DEBUG
 #define _TRACE
@@ -127,6 +128,13 @@ private:
 	std::mutex m_Print_mutex; // make sure different threads are not writing/reading the same variables at the same time
 	std::mutex m_Landscape_mutex; // make sure different threads are not writing/reading the same variables at the same time
 
+	//ROS
+	ros::NodeHandle nh;
+	ros::Publisher pub_norm;
+	ros::Publisher pub_deg;
+	ros::Publisher pub_quat;
+	// ros::Subscriber sub;
+	
 	// map of glove ids -> timers
 	std::map<uint64_t, Timer> m_timers;
 	std::map<uint64_t, double> m_gloveRates;
@@ -470,17 +478,20 @@ private:
 					case JointAnglePrintMode::Degrees:
 					{
 						printFingerDegrees(rumbleFingerStr, i, jointNames, quatfinger);
+						publishFingerDegrees(rumbleFingerStr, i, jointNames, quatfinger);
 						break;
 					}
 					case JointAnglePrintMode::Quaternions:
 					{
 						printFingerQuaternion(rumbleFingerStr, i, jointNames, quatfinger);
+						publishFingerQuaternion(rumbleFingerStr, i, jointNames, quatfinger);
 						break;
 					}
 					case JointAnglePrintMode::Normalized:
 					default:
 					{
 						printFingerNormalized(rumbleFingerStr, i, jointNames, quatfinger);
+						publishFingerNormalized(rumbleFingerStr, i, jointNames, quatfinger);
 						break;
 					}}
 				}
@@ -500,20 +511,7 @@ private:
 			jointNames[1], // mcp for thumb, pip for other fingers
 			roundFloat(quatfinger.phalanges(1).stretch(), 2), // pip joint finger bending normalized value
 			jointNames[2], // ip for thumb, dip for other fingers
-			roundFloat(quatfinger.phalanges(2).stretch(), 2)); // dip joint finger bending normalized value, no sensor at dip, same as pip...
-
-		ros::NodeHandle nh;
-		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
-		std_msgs::Float32MultiArray array;
-		array.data.resize(5);
-		array.data[0] = i; // finger number
-		array.data[1] = roundFloat(quatfinger.phalanges(0).spread(), 2);
-		array.data[2] = roundFloat(quatfinger.phalanges(0).stretch(), 2);
-		array.data[3] = roundFloat(quatfinger.phalanges(1).stretch(), 2);
-		array.data[4] = roundFloat(quatfinger.phalanges(2).stretch(), 2);
-		pub.publish(array);
-		// This part publishes each degree of finger joints one after another.
-		// Be careful to use. 
+			roundFloat(quatfinger.phalanges(2).stretch(), 2)); // dip joint finger bending normalized value, no sensor at dip, same as pip... 
 	}
 
 	void printFingerDegrees(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
@@ -530,19 +528,6 @@ private:
 			roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0), // pip joint finger bending degrees value
 			jointNames[2], // ip for thumb, dip for other fingers
 			roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0)); // dip joint finger bending degrees value, same normalized value as pip, but mapped on different range
-
-		ros::NodeHandle nh;
-		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
-		std_msgs::Float32MultiArray array;
-		array.data.resize(5);
-		array.data[0] = i; // finger number
-		array.data[1] = roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0);
-		array.data[2] = roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0);
-		array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
-		array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
-		pub.publish(array);
-		// This part publishes each degree of finger joints one after another.
-		// Be careful to use. 
 	}
 
 	void printFingerQuaternion(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
@@ -568,27 +553,6 @@ private:
 			roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2), // joint quaternion Y
 			roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2), // joint quaternion Z
 			roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2));// joint quaternion W
-
-		ros::NodeHandle nh;
-		ros::Publisher pub = nh.advertise<std_msgs::Float32MultiArray>("finger_degrees", 10);
-		std_msgs::Float32MultiArray array;
-		array.data.resize(13);
-		array.data[0] = i; // finger number
-		array.data[1] = roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2);
-		array.data[2] = roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2);
-		array.data[3] = roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2);
-		array.data[4] = roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2);
-		array.data[5] = roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2);
-		array.data[6] = roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2);
-		array.data[7] = roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2);
-		array.data[8] = roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2);
-		array.data[9] = roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2);
-		array.data[10] = roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2);
-		array.data[11] = roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2);
-		array.data[12] = roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2);
-		pub.publish(array);
-		// This part publishes each degree of finger joints one after another.
-		// Be careful to use. 
 	}
 
 	HermesSDK::errorMessageCallback onError = [&](const HermesSDK::ErrorMessage& _msg)
@@ -622,9 +586,61 @@ private:
 	}
 
 public:
-	Sample()
+	Sample(): nh("")
 	{
 		maximizeWindow();
+		pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
+		pub_deg = nh.advertise<std_msgs::Float32MultiArray>("degree", 10);
+		pub_quat = nh.advertise<std_msgs::Float32MultiArray>("quaternion", 10);
+		// sub = nh.subscribe("/chatter", 1, &RosWithClass::Callback, this)
+	}
+
+	void publishFingerNormalized(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
+	{
+		std_msgs::Float32MultiArray array;	
+		array.data.resize(5);
+		array.data[0] = i; // finger number
+		array.data[1] = roundFloat(quatfinger.phalanges(0).spread(), 2);
+		array.data[2] = roundFloat(quatfinger.phalanges(0).stretch(), 2);
+		array.data[3] = roundFloat(quatfinger.phalanges(1).stretch(), 2);
+		array.data[4] = roundFloat(quatfinger.phalanges(2).stretch(), 2);
+		pub_deg.publish(array);
+	}
+
+	void publishFingerDegrees(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
+	{
+		std_msgs::Float32MultiArray array;
+		array.data.resize(5);
+		array.data[0] = i; // finger number
+		array.data[1] = roundFloat(quatfinger.phalanges(0).spreaddegrees(), 0);
+		array.data[2] = roundFloat(quatfinger.phalanges(0).stretchdegrees(), 0);
+		array.data[3] = roundFloat(quatfinger.phalanges(1).stretchdegrees(), 0);
+		array.data[4] = roundFloat(quatfinger.phalanges(2).stretchdegrees(), 0);
+		pub_deg.publish(array);
+		// This part publishes each degree of finger joints.
+		// Be careful to use. 
+	}
+
+	void publishFingerQuaternion(std::string& rumbleFingerStr, int& i, const std::array<std::string, jointPerFingerCount>& jointNames, Hermes::Protocol::Finger& quatfinger)
+	{
+		std_msgs::Float32MultiArray quat;
+		quat.data.resize(13);
+		quat.data[0] = i; // finger number
+		quat.data[1] = roundFloat(quatfinger.phalanges(0).rotation().full().x(), 2);
+		quat.data[2] = roundFloat(quatfinger.phalanges(0).rotation().full().y(), 2);
+		quat.data[3] = roundFloat(quatfinger.phalanges(0).rotation().full().z(), 2);
+		quat.data[4] = roundFloat(quatfinger.phalanges(0).rotation().full().w(), 2);
+		quat.data[5] = roundFloat(quatfinger.phalanges(1).rotation().full().x(), 2);
+		quat.data[6] = roundFloat(quatfinger.phalanges(1).rotation().full().y(), 2);
+		quat.data[7] = roundFloat(quatfinger.phalanges(1).rotation().full().z(), 2);
+		quat.data[8] = roundFloat(quatfinger.phalanges(1).rotation().full().w(), 2);
+		quat.data[9] = roundFloat(quatfinger.phalanges(2).rotation().full().x(), 2);
+		quat.data[10] = roundFloat(quatfinger.phalanges(2).rotation().full().y(), 2);
+		quat.data[11] = roundFloat(quatfinger.phalanges(2).rotation().full().z(), 2);
+		quat.data[12] = roundFloat(quatfinger.phalanges(2).rotation().full().w(), 2);
+		pub_quat.publish(quat);
+		// This part publishes each degree of finger joints.
+		// Be careful to use. 
 	}
 
 
@@ -788,6 +804,87 @@ public:
 		}
 	}
 
+	void handleRumbleCallback(const std_msgs::Int16& msg)
+	{
+		/* if (msg.data == 5) {
+			m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left thumb
+		}
+		if (msg.data == 4) {
+			m_rumbleState[Hermes::Protocol::Left].finger[1] = key_pressed('4'); // left index
+		}
+		if (msg.data == 3) {
+			m_rumbleState[Hermes::Protocol::Left].finger[2] = key_pressed('3'); // left middle
+		}
+		if (msg.data == 2) {
+			m_rumbleState[Hermes::Protocol::Left].finger[3] = key_pressed('2'); // left ring
+		}
+		if (msg.data == 1) {
+			m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left pinky
+		}
+		if (msg.data == 6) {
+			m_rumbleState[Hermes::Protocol::Right].finger[0] = key_pressed('6'); // right thumb
+		}
+		if (msg.data == 7) {
+			m_rumbleState[Hermes::Protocol::Right].finger[1] = key_pressed('7'); // right index
+		}
+		if (msg.data == 8) {
+			m_rumbleState[Hermes::Protocol::Right].finger[2] = key_pressed('8'); // right middle
+		}
+		if (msg.data == 9) {
+			m_rumbleState[Hermes::Protocol::Right].finger[3] = key_pressed('9'); // right ring
+		}
+		if (msg.data == 0) {
+			m_rumbleState[Hermes::Protocol::Right].finger[4] = key_pressed('0'); // right pinky
+		} */
+		// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
+
+		unsigned long long elapsedLastCmd_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_timeLastHapticsCmdSent).count();
+
+		if (elapsedLastCmd_ms > timeBetweenHapticsCmds_ms) {
+			m_timeLastHapticsCmdSent = std::chrono::high_resolution_clock::now();
+
+			m_hapticsTimer.Log();
+
+			m_Landscape_mutex.lock();
+			for (auto& forestkv : m_Landscape.forest()) {
+				for (auto& treekv : forestkv.second.trees()) {
+					auto tree = treekv.second;
+					for (auto& leafkv : treekv.second.leafs()) {
+						auto leaf = leafkv.second;
+						if (leaf.id() != 0 && leaf.paired()) {
+
+							float full_power = 1.0f; // full power
+							Hermes::Protocol::HandType handtype = HermesSDK::GetLeafInfo(leaf).HandOfType();
+
+							// Wrist vibration for PrimeOne and PrimeTwo is currently not supported and disabled
+							/*
+							if (leaf.has_primetwoglove() || leaf.has_primeoneglove() || leaf.has_apollolegacyglove())
+							{
+								// Rumble the wrist
+								bool success = HermesSDK::VibrateWrist(leaf.id(), full_power * m_rumbleState[handtype].wrist, 0);
+							}
+							*/
+
+							// Finger vibration only works for PrimeOne Haptics and PrimeTwo Haptics gloves
+							if (HermesSDK::GetLeafInfo(leaf).HasHaptics())
+							{
+								// Rumble the fingers
+								std::array<float, fingerCount> rumble_powers;
+								for (int i = 0; i < fingerCount; ++i) {
+									rumble_powers[i] = full_power * m_rumbleState[handtype].finger[i];
+								}
+
+								bool success = HermesSDK::VibrateFingers(tree.id(), handtype, rumble_powers);
+							}
+						}
+					}
+				}
+			}
+
+			m_Landscape_mutex.unlock();
+		}
+	}
+
 	// return 'false' to keep running, return 'true' to request exit
 	bool	Update()
 	{
@@ -824,7 +921,10 @@ public:
 			return requestExit;
 		}
 
-		handleRumbleCommands();
+		// handleRumbleCommands();
+		// ros::NodeHandle n;
+		// ros::Subscriber sub;
+		//sub = n.subscribe("rumble", 10, handleRumbleCallback);
 
 		if (incomingData.size_approx() == 0)
 		{
@@ -884,9 +984,32 @@ public:
 	}
 };
 
+// Sample::Sample()
+// {
+// 	maximizeWindow();
+// 	//pub_deg = nh.advertise("/array", 1);
+// 	//pub_quat = nh.advertise("/quat", 1);
+// 	//sub = nh.subscribe("/chatter", 1, &chatter_cb, this);
+// }
+
+void chatter_cb(const std_msgs::Int16& msg)
+{
+	Sample sample;
+	sample.Update();
+}
+
 int main(int argc, char* argv[])
 {
 	ros::init(argc, argv, "manus_glove");
+	// ros::NodeHandle nh;
+	// ros::Publisher pub_norm;
+	// ros::Publisher pub_deg;
+	// ros::Publisher pub_quat;
+	// ros::Subscriber sub;
+	// std_msgs::Float32MultiArray array;
+	// std_msgs::Float32MultiArray quat;
+	/* ros::NodeHandle n2;
+	ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb); */
 	/* ros::init(argc, argv, "talker");
 	ros::NodeHandle n;
 	ros::Publisher pub = n.advertise<std_msgs::Float32MultiArray>("array",10);
@@ -926,6 +1049,8 @@ int main(int argc, char* argv[])
 		while (!requestDisconnect)
 		{
 			requestDisconnect = sample.Update();
+			ros::NodeHandle n2;
+			ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb);
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		sample.Disconnect();
