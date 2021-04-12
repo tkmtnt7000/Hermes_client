@@ -134,7 +134,7 @@ private:
 	ros::Publisher pub_norm;
 	ros::Publisher pub_deg;
 	ros::Publisher pub_quat;
-	// ros::Subscriber sub;
+	ros::Subscriber sub;
 	
 	// map of glove ids -> timers
 	std::map<uint64_t, Timer> m_timers;
@@ -671,6 +671,8 @@ public:
 		pub_norm = nh.advertise<sensor_msgs::JointState>("norm", 10);
 		pub_deg = nh.advertise<sensor_msgs::JointState>("degree", 10);
 		pub_quat = nh.advertise<geometry_msgs::QuaternionStamped>("quaternion", 10);
+		sub = nh.subscribe("rumble", 10, &Sample::handleRumbleCallback, this);
+
 		// pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
 		// pub_deg = nh.advertise<std_msgs::Float32MultiArray>("degree", 10);
 		// pub_quat = nh.advertise<std_msgs::Float32MultiArray>("quaternion", 10);
@@ -916,7 +918,7 @@ public:
 
 	void handleRumbleCallback(const std_msgs::Int16& msg)
 	{
-		/* if (msg.data == 5) {
+		if (msg.data == 5) {
 			m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left thumb
 		}
 		if (msg.data == 4) {
@@ -945,7 +947,7 @@ public:
 		}
 		if (msg.data == 0) {
 			m_rumbleState[Hermes::Protocol::Right].finger[4] = key_pressed('0'); // right pinky
-		} */
+		}
 		// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
 
 		unsigned long long elapsedLastCmd_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_timeLastHapticsCmdSent).count();
@@ -1031,7 +1033,7 @@ public:
 			return requestExit;
 		}
 
-		// handleRumbleCommands();
+		handleRumbleCommands();
 		// ros::NodeHandle n;
 		// ros::Subscriber sub;
 		//sub = n.subscribe("rumble", 10, handleRumbleCallback);
@@ -1094,14 +1096,6 @@ public:
 	}
 };
 
-// Sample::Sample()
-// {
-// 	maximizeWindow();
-// 	//pub_deg = nh.advertise("/array", 1);
-// 	//pub_quat = nh.advertise("/quat", 1);
-// 	//sub = nh.subscribe("/chatter", 1, &chatter_cb, this);
-// }
-
 void chatter_cb(const std_msgs::Int16& msg)
 {
 	Sample sample;
@@ -1111,13 +1105,6 @@ void chatter_cb(const std_msgs::Int16& msg)
 int main(int argc, char* argv[])
 {
 	ros::init(argc, argv, "manus_glove");
-	// ros::NodeHandle nh;
-	// ros::Publisher pub_norm;
-	// ros::Publisher pub_deg;
-	// ros::Publisher pub_quat;
-	// ros::Subscriber sub;
-	// std_msgs::Float32MultiArray array;
-	// std_msgs::Float32MultiArray quat;
 	/* ros::NodeHandle n2;
 	ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb); */
 	/* ros::init(argc, argv, "talker");
@@ -1159,8 +1146,10 @@ int main(int argc, char* argv[])
 		while (!requestDisconnect)
 		{
 			requestDisconnect = sample.Update();
-			ros::NodeHandle n2;
-			ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb);
+			ros::spinOnce();
+			// ros::NodeHandle n2;
+			// ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb);
+			
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		sample.Disconnect();
