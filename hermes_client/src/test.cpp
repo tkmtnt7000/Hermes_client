@@ -132,8 +132,11 @@ private:
 	//ROS
 	ros::NodeHandle nh;
 	ros::Publisher pub_norm;
+	ros::Publisher pub_norm_left;
 	ros::Publisher pub_deg;
+	ros::Publisher pub_deg_left;
 	ros::Publisher pub_quat;
+	ros::Publisher pub_quat_left;
 	ros::Subscriber sub;
 	
 	// map of glove ids -> timers
@@ -668,9 +671,10 @@ public:
 	Sample(): nh("")
 	{
 		maximizeWindow();
-		pub_norm = nh.advertise<sensor_msgs::JointState>("norm", 10);
-		pub_deg = nh.advertise<sensor_msgs::JointState>("degree", 10);
-		pub_quat = nh.advertise<geometry_msgs::QuaternionStamped>("quaternion", 10);
+		pub_norm = nh.advertise<sensor_msgs::JointState>("manusprime/joinstates_norm", 10);
+		pub_norm_left = nh.advertise<sensor_msgs::JointState("manusprime/left/jointstates_norm", 10);
+		pub_deg = nh.advertise<sensor_msgs::JointState>("manusprime/jointstates", 10);
+		pub_quat = nh.advertise<geometry_msgs::QuaternionStamped>("manusprime/quaternion", 10);
 		sub = nh.subscribe("rumble", 10, &Sample::handleRumbleCallback, this);
 
 		// pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
@@ -852,73 +856,102 @@ public:
 		return (GetAsyncKeyState(key) & 0x8000);
 	}
 
-	void handleRumbleCommands()
-	{
-		m_rumbleState[Hermes::Protocol::Left].wrist = key_pressed(VK_LEFT);
-		m_rumbleState[Hermes::Protocol::Right].wrist = key_pressed(VK_RIGHT);
+	// void handleRumbleCommands()
+	// {
+	// 	m_rumbleState[Hermes::Protocol::Left].wrist = key_pressed(VK_LEFT);
+	// 	m_rumbleState[Hermes::Protocol::Right].wrist = key_pressed(VK_RIGHT);
 
-		// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
-		m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left thumb
-		m_rumbleState[Hermes::Protocol::Left].finger[1] = key_pressed('4'); // left index
-		m_rumbleState[Hermes::Protocol::Left].finger[2] = key_pressed('3'); // left middle
-		m_rumbleState[Hermes::Protocol::Left].finger[3] = key_pressed('2'); // left ring
-		m_rumbleState[Hermes::Protocol::Left].finger[4] = key_pressed('1'); // left pinky
-		m_rumbleState[Hermes::Protocol::Right].finger[0] = key_pressed('6'); // right thumb
-		m_rumbleState[Hermes::Protocol::Right].finger[1] = key_pressed('7'); // right index
-		m_rumbleState[Hermes::Protocol::Right].finger[2] = key_pressed('8'); // right middle
-		m_rumbleState[Hermes::Protocol::Right].finger[3] = key_pressed('9'); // right ring
-		m_rumbleState[Hermes::Protocol::Right].finger[4] = key_pressed('0'); // right pinky
+	// 	// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
+	// 	m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left thumb
+	// 	m_rumbleState[Hermes::Protocol::Left].finger[1] = key_pressed('4'); // left index
+	// 	m_rumbleState[Hermes::Protocol::Left].finger[2] = key_pressed('3'); // left middle
+	// 	m_rumbleState[Hermes::Protocol::Left].finger[3] = key_pressed('2'); // left ring
+	// 	m_rumbleState[Hermes::Protocol::Left].finger[4] = key_pressed('1'); // left pinky
+	// 	m_rumbleState[Hermes::Protocol::Right].finger[0] = key_pressed('6'); // right thumb
+	// 	m_rumbleState[Hermes::Protocol::Right].finger[1] = key_pressed('7'); // right index
+	// 	m_rumbleState[Hermes::Protocol::Right].finger[2] = key_pressed('8'); // right middle
+	// 	m_rumbleState[Hermes::Protocol::Right].finger[3] = key_pressed('9'); // right ring
+	// 	m_rumbleState[Hermes::Protocol::Right].finger[4] = key_pressed('0'); // right pinky
 
-		unsigned long long elapsedLastCmd_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_timeLastHapticsCmdSent).count();
+	// 	unsigned long long elapsedLastCmd_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_timeLastHapticsCmdSent).count();
 
-		if (elapsedLastCmd_ms > timeBetweenHapticsCmds_ms) {
-			m_timeLastHapticsCmdSent = std::chrono::high_resolution_clock::now();
+	// 	if (elapsedLastCmd_ms > timeBetweenHapticsCmds_ms) {
+	// 		m_timeLastHapticsCmdSent = std::chrono::high_resolution_clock::now();
 
-			m_hapticsTimer.Log();
+	// 		m_hapticsTimer.Log();
 
-			m_Landscape_mutex.lock();
-			for (auto& forestkv : m_Landscape.forest()) {
-				for (auto& treekv : forestkv.second.trees()) {
-					auto tree = treekv.second;
-					for (auto& leafkv : treekv.second.leafs()) {
-						auto leaf = leafkv.second;
-						if (leaf.id() != 0 && leaf.paired()) {
+	// 		m_Landscape_mutex.lock();
+	// 		for (auto& forestkv : m_Landscape.forest()) {
+	// 			for (auto& treekv : forestkv.second.trees()) {
+	// 				auto tree = treekv.second;
+	// 				for (auto& leafkv : treekv.second.leafs()) {
+	// 					auto leaf = leafkv.second;
+	// 					if (leaf.id() != 0 && leaf.paired()) {
 
-							float full_power = 1.0f; // full power
-							Hermes::Protocol::HandType handtype = HermesSDK::GetLeafInfo(leaf).HandOfType();
+	// 						float full_power = 1.0f; // full power
+	// 						Hermes::Protocol::HandType handtype = HermesSDK::GetLeafInfo(leaf).HandOfType();
 
-							// Wrist vibration for PrimeOne and PrimeTwo is currently not supported and disabled
-							/*
-							if (leaf.has_primetwoglove() || leaf.has_primeoneglove() || leaf.has_apollolegacyglove())
-							{
-								// Rumble the wrist
-								bool success = HermesSDK::VibrateWrist(leaf.id(), full_power * m_rumbleState[handtype].wrist, 0);
-							}
-							*/
+	// 						// Wrist vibration for PrimeOne and PrimeTwo is currently not supported and disabled
+	// 						/*
+	// 						if (leaf.has_primetwoglove() || leaf.has_primeoneglove() || leaf.has_apollolegacyglove())
+	// 						{
+	// 							// Rumble the wrist
+	// 							bool success = HermesSDK::VibrateWrist(leaf.id(), full_power * m_rumbleState[handtype].wrist, 0);
+	// 						}
+	// 						*/
 
-							// Finger vibration only works for PrimeOne Haptics and PrimeTwo Haptics gloves
-							if (HermesSDK::GetLeafInfo(leaf).HasHaptics())
-							{
-								// Rumble the fingers
-								std::array<float, fingerCount> rumble_powers;
-								for (int i = 0; i < fingerCount; ++i) {
-									rumble_powers[i] = full_power * m_rumbleState[handtype].finger[i];
-								}
+	// 						// Finger vibration only works for PrimeOne Haptics and PrimeTwo Haptics gloves
+	// 						if (HermesSDK::GetLeafInfo(leaf).HasHaptics())
+	// 						{
+	// 							// Rumble the fingers
+	// 							std::array<float, fingerCount> rumble_powers;
+								
+	// 							for (int i = 0; i < fingerCount; ++i) {
+	// 								rumble_powers[i] = full_power * m_rumbleState[handtype].finger[i];
+	// 							}
+								
+	// 							bool success = HermesSDK::VibrateFingers(tree.id(), handtype, rumble_powers);
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		}
 
-								bool success = HermesSDK::VibrateFingers(tree.id(), handtype, rumble_powers);
-							}
-						}
-					}
-				}
-			}
-
-			m_Landscape_mutex.unlock();
-		}
-	}
+	// 		m_Landscape_mutex.unlock();
+	// 	}
+	// }
 
 	void handleRumbleCallback(const std_msgs::Int16& msg)
 	{
-		if (msg.data == 5) {
+		for (i=1;i<6;i++)
+		{
+			if(msg.data == i){
+				m_rumbleState[Hermes::Protocol::Left].finger[5-i] = true; // left hand
+			}
+		}
+
+		for (i=1;i<6;i++)
+		{
+			if(msg.data == -i){
+				m_rumbleState[Hermes::Protocol::Left].finger[5-i] = false; // left hand
+			}
+		}
+
+		for (i=6;i<10;i++)
+		{
+			if(msg.date == i){
+				m_rumbleState[Hermes::Protocol::Right].finger[10-i] = true; // right hand
+			}
+		}
+
+		for (i=6;i<10;i++)
+		{
+			if(msg.date == i){
+				m_rumbleState[Hermes::Protocol::Right].finger[10-i] = false; // right hand
+			}
+		}
+
+		/* if (msg.data == 5) {
 			m_rumbleState[Hermes::Protocol::Left].finger[0] = true; // left thumb
 		}
 		if (msg.data == 4) {
@@ -931,7 +964,7 @@ public:
 			m_rumbleState[Hermes::Protocol::Left].finger[3] = true; // left ring
 		}
 		if (msg.data == 1) {
-			m_rumbleState[Hermes::Protocol::Left].finger[0] = true; // left pinky
+			m_rumbleState[Hermes::Protocol::Left].finger[4] = true; // left pinky
 		}
 		if (msg.data == 6) {
 			m_rumbleState[Hermes::Protocol::Right].finger[0] = true; // right thumb
@@ -945,9 +978,9 @@ public:
 		if (msg.data == 9) {
 			m_rumbleState[Hermes::Protocol::Right].finger[3] = true; // right ring
 		}
-		if (msg.data == 0) {
+		if (msg.data == 10) {
 			m_rumbleState[Hermes::Protocol::Right].finger[4] = true; // right pinky
-		}
+		} */
 		// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
 
 		unsigned long long elapsedLastCmd_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_timeLastHapticsCmdSent).count();
@@ -1105,25 +1138,6 @@ void chatter_cb(const std_msgs::Int16& msg)
 int main(int argc, char* argv[])
 {
 	ros::init(argc, argv, "manus_glove");
-	/* ros::NodeHandle n2;
-	ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb); */
-	/* ros::init(argc, argv, "talker");
-	ros::NodeHandle n;
-	ros::Publisher pub = n.advertise<std_msgs::Float32MultiArray>("array",10);
-	ros::Rate loop_rate(1);
-	while (ros::ok())
-	{
-		std_msgs::Float32MultiArray array;
-		array.data.resize(4);
-		array.data[0] = 0.0;
-		array.data[1] = 1.0;
-		array.data[2] = 2.0;
-		array.data[3] = 3.0;
-		pub.publish(array);
-		ROS_INFO("I published array!");
-		ros::spinOnce();
-		loop_rate.sleep();
-	} */
 
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -1147,8 +1161,6 @@ int main(int argc, char* argv[])
 		{
 			requestDisconnect = sample.Update();
 			ros::spinOnce();
-			// ros::NodeHandle n2;
-			// ros::Subscriber sub = n2.subscribe("chatter", 10, chatter_cb);
 			
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
