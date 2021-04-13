@@ -919,34 +919,34 @@ public:
 	void handleRumbleCallback(const std_msgs::Int16& msg)
 	{
 		if (msg.data == 5) {
-			m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left thumb
+			m_rumbleState[Hermes::Protocol::Left].finger[0] = true; // left thumb
 		}
 		if (msg.data == 4) {
-			m_rumbleState[Hermes::Protocol::Left].finger[1] = key_pressed('4'); // left index
+			m_rumbleState[Hermes::Protocol::Left].finger[1] = true; // left index
 		}
 		if (msg.data == 3) {
-			m_rumbleState[Hermes::Protocol::Left].finger[2] = key_pressed('3'); // left middle
+			m_rumbleState[Hermes::Protocol::Left].finger[2] = true; // left middle
 		}
 		if (msg.data == 2) {
-			m_rumbleState[Hermes::Protocol::Left].finger[3] = key_pressed('2'); // left ring
+			m_rumbleState[Hermes::Protocol::Left].finger[3] = true; // left ring
 		}
 		if (msg.data == 1) {
-			m_rumbleState[Hermes::Protocol::Left].finger[0] = key_pressed('5'); // left pinky
+			m_rumbleState[Hermes::Protocol::Left].finger[0] = true; // left pinky
 		}
 		if (msg.data == 6) {
-			m_rumbleState[Hermes::Protocol::Right].finger[0] = key_pressed('6'); // right thumb
+			m_rumbleState[Hermes::Protocol::Right].finger[0] = true; // right thumb
 		}
 		if (msg.data == 7) {
-			m_rumbleState[Hermes::Protocol::Right].finger[1] = key_pressed('7'); // right index
+			m_rumbleState[Hermes::Protocol::Right].finger[1] = true; // right index
 		}
 		if (msg.data == 8) {
-			m_rumbleState[Hermes::Protocol::Right].finger[2] = key_pressed('8'); // right middle
+			m_rumbleState[Hermes::Protocol::Right].finger[2] = true; // right middle
 		}
 		if (msg.data == 9) {
-			m_rumbleState[Hermes::Protocol::Right].finger[3] = key_pressed('9'); // right ring
+			m_rumbleState[Hermes::Protocol::Right].finger[3] = true; // right ring
 		}
 		if (msg.data == 0) {
-			m_rumbleState[Hermes::Protocol::Right].finger[4] = key_pressed('0'); // right pinky
+			m_rumbleState[Hermes::Protocol::Right].finger[4] = true; // right pinky
 		}
 		// strange key number sequence results from having gloves lie in front of you, and have the keys and rumblers in the same order
 
