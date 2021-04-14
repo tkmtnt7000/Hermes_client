@@ -131,11 +131,11 @@ private:
 
 	//ROS
 	ros::NodeHandle nh;
-	ros::Publisher pub_norm;
+	ros::Publisher pub_norm_right;
 	ros::Publisher pub_norm_left;
-	ros::Publisher pub_deg;
+	ros::Publisher pub_deg_right;
 	ros::Publisher pub_deg_left;
-	ros::Publisher pub_quat;
+	ros::Publisher pub_quat_right;
 	ros::Publisher pub_quat_left;
 	ros::Subscriber sub;
 	
@@ -554,9 +554,9 @@ private:
 					quat.quaternion.w = roundFloat(imu.full().w(), 2);
 
 				}
-				pub_deg.publish(deg);
-				pub_norm.publish(norm);
-				pub_quat.publish(quat);
+				pub_deg_right.publish(deg);
+				pub_norm_right.publish(norm);
+				pub_quat_right.publish(quat);
 
 			// fingerNames[i], // name of the finger
 			// jointNames[0], // cmc for thumb, mcp for other fingers
@@ -671,10 +671,12 @@ public:
 	Sample(): nh("")
 	{
 		maximizeWindow();
-		pub_norm = nh.advertise<sensor_msgs::JointState>("manusprime/joinstates_norm", 10);
-		pub_norm_left = nh.advertise<sensor_msgs::JointState("manusprime/left/jointstates_norm", 10);
-		pub_deg = nh.advertise<sensor_msgs::JointState>("manusprime/jointstates", 10);
-		pub_quat = nh.advertise<geometry_msgs::QuaternionStamped>("manusprime/quaternion", 10);
+		pub_norm_right = nh.advertise<sensor_msgs::JointState>("manusprime/right/joinstates_norm", 10);
+		pub_norm_left = nh.advertise<sensor_msgs::JointState>("manusprime/left/jointstates_norm", 10);
+		pub_deg_right = nh.advertise<sensor_msgs::JointState>("manusprime/right/jointstates", 10);
+		pub_deg_left = nh.advertise<sensor_msgs::JointState>("manusprime/left/jointstates", 10);
+		pub_quat_right = nh.advertise<geometry_msgs::QuaternionStamped>("manusprime/right/quaternion", 10);
+		pub_quat_left = nh.advertise<geometry_msgs::QuaternionStamped>("manusprime/left/quaternion", 10);
 		sub = nh.subscribe("rumble", 10, &Sample::handleRumbleCallback, this);
 
 		// pub_norm = nh.advertise<std_msgs::Float32MultiArray>("norm", 10);
@@ -856,8 +858,8 @@ public:
 		return (GetAsyncKeyState(key) & 0x8000);
 	}
 
-	// void handleRumbleCommands()
-	// {
+	void handleRumbleCommands()
+	{
 	// 	m_rumbleState[Hermes::Protocol::Left].wrist = key_pressed(VK_LEFT);
 	// 	m_rumbleState[Hermes::Protocol::Right].wrist = key_pressed(VK_RIGHT);
 
@@ -919,10 +921,11 @@ public:
 
 	// 		m_Landscape_mutex.unlock();
 	// 	}
-	// }
+	}
 
 	void handleRumbleCallback(const std_msgs::Int16& msg)
 	{
+		int i=0;
 		for (i=1;i<6;i++)
 		{
 			if(msg.data == i){
@@ -939,14 +942,14 @@ public:
 
 		for (i=6;i<10;i++)
 		{
-			if(msg.date == i){
+			if(msg.data == i){
 				m_rumbleState[Hermes::Protocol::Right].finger[10-i] = true; // right hand
 			}
 		}
 
 		for (i=6;i<10;i++)
 		{
-			if(msg.date == i){
+			if(msg.data == i){
 				m_rumbleState[Hermes::Protocol::Right].finger[10-i] = false; // right hand
 			}
 		}
