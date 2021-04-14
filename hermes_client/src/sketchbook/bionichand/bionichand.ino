@@ -1,7 +1,9 @@
-#include <WindowsSocket.h>
-#include <ros.h>
 #include <PCA9685.h>     //PCA9685用ヘッダーファイル
 PCA9685 pwm = PCA9685(0x40);    //PCA9685のアドレス指定（アドレスジャンパ未接続時）
+
+#include <WindowsSocket.h>
+#include <ros.h>
+#include <std_msgs/Int16.h>
 
 #define SERVOMIN 150            //最小パルス幅 (GWS Micro2BBMG)
 #define SERVOMAX 500            //最大パルス幅 (GWS Micro2BBMG)
